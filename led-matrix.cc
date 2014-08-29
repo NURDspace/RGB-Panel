@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <algorithm>
 
 #include "gpio.h"
 
@@ -55,13 +56,6 @@ static void sleep_nanos(long nanos) {
   }
 }
 
-static void FlipBuffers(int **p_intP1, int **p_intP2) {
-        int *l_intP3;
-        l_intP3 = *p_intP2;
-        *p_intP2 = *p_intP1;
-        *p_intP1 = l_intP3;
-}
-
 RGBMatrix::RGBMatrix(GPIO *io) : io_(io) {
   // Tell GPIO about all bits we intend to use.
   IoBits b;
@@ -78,12 +72,12 @@ RGBMatrix::RGBMatrix(GPIO *io) : io_(io) {
   ClearScreen();
 }
 
-void RGBMatrix::FillBuffer(uint8_t framedata[],int length, uint8_t startByte) {
+void RGBMatrix::FillBuffer(uint8_t framedata[],uint8_t length, uint8_t startByte) {
   for (int n=0; n<length; ++n) {
     memset(&buffer_+startByte,framedata[n],1);
   }
-  if (length+startByte == sizeof(buffer_) {
-    FlipBuffers(&buffer_,&bitplane_);
+  if (length+startByte == sizeof(buffer_)) {
+    std::swap(buffer_,bitplane_);
   }
 }
 

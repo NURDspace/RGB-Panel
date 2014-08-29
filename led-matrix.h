@@ -17,6 +17,7 @@ class RGBMatrix {
   int height() const { return 16; }
   void SetPixel(uint8_t x, uint8_t y,
                 uint8_t red, uint8_t green, uint8_t blue);
+  void FillBuffer(uint8_t framedata[], uint8_t length, uint8_t startByte);
 
   // Updates the screen once. Call this in a continous loop in some realtime
   // thread.
