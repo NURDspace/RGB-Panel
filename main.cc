@@ -46,7 +46,6 @@ public:
   void Run() {
         //Do some network stuff in here
         //Write that stuff to the framebuffer
-    }
   }
 };
 
