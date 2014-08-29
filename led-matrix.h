@@ -64,6 +64,7 @@ private:
   };
 
   Screen bitplane_[kPWMBits];
+  Screen buffer_[kPWMBits];
 };
 
 #endif  // RPI_RGBMATRIX_H
