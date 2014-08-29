@@ -72,17 +72,16 @@ RGBMatrix::RGBMatrix(GPIO *io) : io_(io) {
   ClearScreen();
 }
 
-void RGBMatrix::FillBuffer(uint8_t framedata[],uint8_t length, uint8_t startByte) {
-  for (int n=0; n<length; ++n) {
-    memset(&buffer_+startByte,framedata[n],1);
-  }
-  if (length+startByte == sizeof(buffer_)) {
-    std::swap(buffer_,bitplane_);
-  }
-}
-
 void RGBMatrix::ClearScreen() {
   memset(&bitplane_, 0, sizeof(bitplane_));
+}
+
+void RGBMatrix::FlipBuffer() {
+//  void* temp;
+//  temp = &buffer_;
+//  &buffer_=&bitplane_;
+//  &bitplane_=temp;
+  std::swap(buffer_,bitplane_);
 }
 
 void RGBMatrix::SetPixel(uint8_t x, uint8_t y,
@@ -96,21 +95,32 @@ void RGBMatrix::SetPixel(uint8_t x, uint8_t y,
   
   // Scale to the number of bit planes we actually have, so that MSB matches
   // MSB of PWM.
-  red   >>= 8 - kPWMBits;
-  green >>= 8 - kPWMBits;
-  blue  >>= 8 - kPWMBits;
+//  red   >>= 8 - kPWMBits;
+//  green >>= 8 - kPWMBits;
+//  blue  >>= 8 - kPWMBits;
+  red   = red *kPWMBits/256;
+  green =green*kPWMBits/256;
+  blue  =blue *kPWMBits/256;
 
   for (int b = 0; b < kPWMBits; ++b) {
-    uint8_t mask = 1 << b;
-    IoBits *bits = &bitplane_[b].row[y & 0x7].column[x];  // 8 rows, 0-based
+//    uint8_t mask = 1 << b;
+    uint8_t mask = b;
+//    IoBits *bits = &bitplane_[b].row[y & 0x7].column[x];  // 8 rows, 0-based
+    IoBits *bits = &buffer_[b].row[y & 0x7].column[x];  // 8 rows, 0-based
     if (y < 8) {    // Upper sub-panel. - 16 actual rows; 8 high & 8 low
-      bits->bits.r1 = (red & mask) == mask;
-      bits->bits.g1 = (green & mask) == mask;
-      bits->bits.b1 = (blue & mask) == mask;
+//      bits->bits.r1 = (red & mask) == mask;
+//      bits->bits.g1 = (green & mask) == mask;
+//      bits->bits.b1 = (blue & mask) == mask;
+      bits->bits.r1 = (red > mask);
+      bits->bits.g1 = (green > mask);
+      bits->bits.b1 = (blue > mask);
     } else {        // Lower sub-panel.
-      bits->bits.r2 = (red & mask) == mask;
-      bits->bits.g2 = (green & mask) == mask;
-      bits->bits.b2 = (blue & mask) == mask;
+//      bits->bits.r2 = (red & mask) == mask;
+//      bits->bits.g2 = (green & mask) == mask;
+//      bits->bits.b2 = (blue & mask) == mask;
+      bits->bits.r2 = (red > mask);
+      bits->bits.g2 = (green > mask);
+      bits->bits.b2 = (blue > mask);
     }
   }
 }
