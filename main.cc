@@ -37,25 +37,48 @@ public:
   }
 };
 
+// -- The following are demo image generators.
+
+// Simple generator that pulses through RGB and White.
+class EthernetListner: public RGBMatrixManipulator {
+public:
+  EthernetListner(RGBMatrix *m) : RGBMatrixManipulator(m) {}
+  void Run() {
+        //Do some network stuff in here
+        //Write that stuff to the framebuffer
+    }
+  }
+};
+
 int main(int argc, char *argv[]) {
   GPIO io;
   if (!io.Init())
     return 1;
 
-  //Init display
   RGBMatrix m(&io);
-    
-  RGBMatrixManipulator *image_gen = NULL;
 
-  if (image_gen == NULL)
-    return 1;
+  //Create the ethernet listner thread    
+  RGBMatrixManipulator *eth_gen = NULL;
+  eth_gen = new EthernetListner(&m);
 
-  //Start the UpdateScreen thread
+  //Create the ScreenUpdater thread
   RGBMatrixManipulator *updater = new DisplayUpdater(&m);
+  //Start the ScreenUpdater thread
   updater->Start(10);  // high priority
 
+  //Start the ethernet thread
+  eth_gen->Start();
+
+  // Things are set up. Just wait for <RETURN> to be pressed.
+  printf("Press <RETURN> to exit and reset LEDs\n");
+  getchar();
+
+  // Stopping threads and wait for them to join.
+  delete eth_gen;
   delete updater;
 
+  // Final thing before exit: clear screen and update once, so that
+  // we don't have random pixels burn
   m.ClearScreen();
   m.UpdateScreen();
 
