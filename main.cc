@@ -5,13 +5,41 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <algorithm>
 
 #define PI 3.14159265
 
 using std::min;
 using std::max;
+
+
+int make_socket (uint16_t port)
+     {
+       int sock;
+       struct sockaddr_in name;
+       /* Create the socket. */
+       sock = socket (PF_INET, SOCK_STREAM, 0);
+       if (sock < 0)
+         {
+           perror ("socket");
+           exit (EXIT_FAILURE);
+         }
+       /* Give the socket a name. */
+       name.sin_family = AF_INET;
+       name.sin_port = htons (port);
+       name.sin_addr.s_addr = htonl (INADDR_ANY);
+       if (bind (sock, (struct sockaddr *) &name, sizeof (name)) < 0)
+         {
+           perror ("bind");
+           exit (EXIT_FAILURE);
+         }
+       return sock;
+     }
 
 // Base-class for a Thread that does something with a matrix.
 class RGBMatrixManipulator : public Thread {
@@ -35,6 +63,50 @@ public:
   void Run() {
     while (running_) {
       matrix_->UpdateScreen();
+    }
+  }
+};
+
+// Pump pixels to screen. Needs to be high priority real-time because jitter
+// here will make the PWM uneven.
+class EthernetListener : public RGBMatrixManipulator {
+public:
+  EthernetListener(RGBMatrix *m) : RGBMatrixManipulator(m) {}
+
+  struct Pixel {
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+  };
+  void Run() {
+    int sockfd, newsockfd;
+    Pixel buffer[matrix_->width()*matrix_->height()];
+    struct sockaddr_in cli_addr;
+    int n;
+
+    sockfd = make_socket(5001);
+
+    listen(sockfd,5);
+    socklen_t clilen = sizeof(cli_addr);
+    while (running_) {
+
+      /* Accept actual connection from the client */
+      newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, 
+                                  &clilen);
+      printf("Recieving...\n");
+      if (newsockfd < 0) 
+      {
+          perror("ERROR on accept");
+      }
+      /* If connection is established then start communicating */
+      memset(buffer,0,sizeof(buffer));
+      n = read( newsockfd,buffer,matrix_->width()*matrix_->height()*3);
+      printf("Read.\n");
+      for (int x = 0; x < sizeof(buffer)/3; ++x) {
+        matrix_->SetPixel(x%matrix_->width(), x/matrix_->width(), buffer[x].red, buffer[x].green, buffer[x].blue);
+//      matrix_->UpdateBuffer(buffer);
+      }
+      matrix_->FlipBuffer();
     }
   }
 };
@@ -351,6 +423,11 @@ int main(int argc, char *argv[]) {
     image_gen = new TestWaveGenerator(&m);
     break;
 
+  case 5:
+    image_gen = new EthernetListener(&m);
+    printf("Hunting on port 5001.\n");
+    break;
+
   default:
     image_gen = new ColorPulseGenerator(&m);
     break;
@@ -359,9 +436,10 @@ int main(int argc, char *argv[]) {
   if (image_gen == NULL)
     return 1;
 
+//  RGBMatrixManipulator *eth_gen = new EthernetListener(&m);
   RGBMatrixManipulator *updater = new DisplayUpdater(&m);
   updater->Start(10);  // high priority
-
+//  eth_gen->Start();
   image_gen->Start();
 
   // Things are set up. Just wait for <RETURN> to be pressed.
