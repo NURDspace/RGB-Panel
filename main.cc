@@ -80,9 +80,10 @@ public:
   };
   void Run() {
     int sockfd, newsockfd;
-    Pixel buffer[matrix_->width()*matrix_->height()];
+    uint8_t buffer[matrix_->frame_size()*matrix_->pwm_bits()];
     struct sockaddr_in cli_addr;
-    int n;
+    long n, framepos;
+    int pwm;
 
     sockfd = make_socket(5001);
 
@@ -94,17 +95,46 @@ public:
       newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, 
                                   &clilen);
       printf("Recieving...\n");
+      framepos=0;
+      pwm=0;
       if (newsockfd < 0) 
       {
           perror("ERROR on accept");
       }
       /* If connection is established then start communicating */
       memset(buffer,0,sizeof(buffer));
-      n = read( newsockfd,buffer,matrix_->width()*matrix_->height()*3);
-      printf("Read.\n");
-      for (int x = 0; x < sizeof(buffer)/3; ++x) {
-        matrix_->SetPixel(x%matrix_->width(), x/matrix_->width(), buffer[x].red, buffer[x].green, buffer[x].blue);
-//      matrix_->UpdateBuffer(buffer);
+
+      uint8_t frame [matrix_->frame_size()];
+      memset(frame,0,sizeof(frame));
+      while (true) {
+        n = read( newsockfd,buffer,sizeof(buffer));
+        if (n == 0) {break;}
+        for (long x = 0; x < n; ++x) {
+          uint8_t b = buffer[x];
+          if (b & 128) { //new frame
+            matrix_->FlipBuffer();
+            memset(frame,0,sizeof(frame));
+            pwm = 0;
+          }
+          if (b & 64) { //new pwm frame
+            if (pwm<=matrix_->pwm_bits()) {
+              matrix_->PushBuffer(frame,pwm);
+            }
+//            printf("pwm is now %d.\n",pwm);
+            pwm++;
+//            printf("frame: ");
+//            for (long i=0;i < sizeof(frame);i++) {
+//              printf("%x",frame[i]);
+//            }
+//            printf("\n");
+            framepos=0;
+          } else {
+            framepos++;
+          }
+          if (framepos<= sizeof(frame)) {
+            frame[framepos]=b;
+          } //otherwise discard
+        }
       }
       matrix_->FlipBuffer();
     }
