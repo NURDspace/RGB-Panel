@@ -125,6 +125,17 @@ void RGBMatrix::SetPixel(uint8_t x, uint8_t y,
   }
 }
 
+void RGBMatrix::PushBuffer(uint8_t minibuf[],int pwmLayer) {
+  for (long i=0; i< kDoubleRows*kColumns;++i) {
+    buffer_[pwmLayer].row[(i%kDoubleRows)].column[(i/kDoubleRows)].bits.r1=(minibuf[i]&1)>>0;
+    buffer_[pwmLayer].row[(i%kDoubleRows)].column[(i/kDoubleRows)].bits.g1=(minibuf[i]&2)>>1;
+    buffer_[pwmLayer].row[(i%kDoubleRows)].column[(i/kDoubleRows)].bits.b1=(minibuf[i]&4)>>2;
+    buffer_[pwmLayer].row[(i%kDoubleRows)].column[(i/kDoubleRows)].bits.r2=(minibuf[i]&8)>>3;
+    buffer_[pwmLayer].row[(i%kDoubleRows)].column[(i/kDoubleRows)].bits.g2=(minibuf[i]&16)>>4;
+    buffer_[pwmLayer].row[(i%kDoubleRows)].column[(i/kDoubleRows)].bits.b2=(minibuf[i]&32)>>5;
+  }
+}
+
 void RGBMatrix::UpdateScreen() {
   IoBits serial_mask;   // Mask of bits we need to set while clocking in.
   serial_mask.bits.r1 = serial_mask.bits.g1 = serial_mask.bits.b1 = 1;
@@ -139,12 +150,14 @@ void RGBMatrix::UpdateScreen() {
   output_enable.bits.output_enable = 1;
   strobe.bits.strobe = 1;
 
+  const Screen *disp = bitplane_;
+
   IoBits row_bits;
   for (uint8_t row = 0; row < kDoubleRows; ++row) {
     // Rows can't be switched very quickly without ghosting, so we do the
     // full PWM of one row before switching rows.
     for (int b = 0; b < kPWMBits; ++b) {
-      const DoubleRow &rowdata = bitplane_[b].row[row];
+      const DoubleRow &rowdata = disp[b].row[row];
 
       // Clock in the row. The time this takes is the smalles time we can
       // leave the LEDs on, thus the smallest time-constant we can use for

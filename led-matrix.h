@@ -9,6 +9,14 @@
 
 class RGBMatrix {
  public:
+
+  enum {
+    kDoubleRows = 8,     // Physical constant of the used board.
+    kChainedBoards = 4,   // Number of boards that are daisy-chained.
+    kColumns = kChainedBoards * 32,
+    kPWMBits = 6          // maximum PWM resolution.
+  };
+
   RGBMatrix(GPIO *io);
   void ClearScreen();
 
@@ -19,6 +27,10 @@ class RGBMatrix {
   void SetPixel(uint8_t x, uint8_t y,
                 uint8_t red, uint8_t green, uint8_t blue);
 
+  int frame_size() const { return kDoubleRows*kColumns; }
+  int pwm_bits() const { return kPWMBits; }
+  void PushBuffer(uint8_t minibuf[kDoubleRows*kColumns],int pwmLayer);
+
   // Updates the screen once. Call this in a continous loop in some realtime
   // thread.
   void UpdateScreen();
@@ -27,12 +39,12 @@ class RGBMatrix {
 private:
   GPIO *const io_;
 
-  enum {
-    kDoubleRows = 8,     // Physical constant of the used board.
-    kChainedBoards = 4,   // Number of boards that are daisy-chained.
-    kColumns = kChainedBoards * 32,
-    kPWMBits = 6          // maximum PWM resolution.
-  };
+//  enum {
+//    kDoubleRows = 8,     // Physical constant of the used board.
+//    kChainedBoards = 4,   // Number of boards that are daisy-chained.
+//    kColumns = kChainedBoards * 32,
+//    kPWMBits = 6          // maximum PWM resolution.
+//  };
 
   union IoBits {
     struct {
@@ -54,6 +66,9 @@ private:
     uint32_t raw;
     IoBits() : raw(0) {}
   };
+
+
+
 
   // A double row represents row n and n+8. The physical layout of the
   // 16x32 RGB is two sub-panels with 32 columns and 8 rows.
