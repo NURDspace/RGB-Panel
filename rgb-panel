@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Script for /etc/init.d to daemonise the RGB-Panel process
+#
+SCREEN=/usr/bin/screen
+SCREENFLAGS="-D -m"
+BIN=/root/RGB-Panel/led-matrix
+test -x $BIN || exit 5
+PIDFILE=/tmp/rgb-panel.pid
+
+case "$1" in
+      start)
+            echo "Starting RGB-Panel ... "
+            start-stop-daemon -S -m -p $PIDFILE -b -a $SCREEN -- $SCREENFLAGS $BIN
+            echo "running"
+            ;;
+      stop)
+            echo "Stopping RGB-Panel ... "
+            start-stop-daemon -K -p $PIDFILE
+            echo "stopped"
+            ;;
+      restart)
+            echo "Stopping RGB-Panel ... "
+            start-stop-daemon -K -p $PIDFILE
+            echo "Starting RGB-Panel ... "
+            start-stop-daemon -S -m -p $PIDFILE -b -a $SCREEN -- $SCREENFLAGS $BIN
+            echo "running"
+            ;;
+          *)
+            echo "Usage: $0 start|stop|restart"
+            exit 1
+            ;;
+esac
+

@@ -82,7 +82,7 @@ public:
     int sockfd, newsockfd;
     uint8_t buffer[matrix_->frame_size()*matrix_->pwm_bits()];
     struct sockaddr_in cli_addr;
-    long n, framepos;
+    unsigned long n, framepos;
     int pwm;
 
     sockfd = make_socket(5001);
@@ -109,10 +109,11 @@ public:
       while (true) {
         n = read( newsockfd,buffer,sizeof(buffer));
         if (n == 0) {break;}
-        for (long x = 0; x < n; ++x) {
+        for (unsigned long x = 0; x < n; ++x) {
           uint8_t b = buffer[x];
           if (b & 128) { //new frame
             matrix_->FlipBuffer();
+//            printf("Flip!\n",pwm);
             memset(frame,0,sizeof(frame));
             pwm = 0;
           }
@@ -411,7 +412,7 @@ private:
 };
 
 int main(int argc, char *argv[]) {
-  int demo = 0;
+  int demo = 5;
   if (argc > 1) {
     demo = atoi(argv[1]);
   }
